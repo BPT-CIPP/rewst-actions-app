@@ -1,11 +1,18 @@
 {
-  "name": "rewst-actions",
+  "name": "rewst-actions-app",
   "version": "1.0.0",
   "main": "main.js",
   "scripts": {
     "start": "electron ."
   },
+  "dependencies": {
+    "electron": "^14.0.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
   "devDependencies": {
-    "electron": "^25.0.0"
+    "electron": "^32.0.2"
   }
 }

@@ -3,114 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rewst Actions</title>
+    <title>Rewst Actions Manager</title>
     <style>
         body {
             font-family: Arial, sans-serif;
+            padding: 20px;
         }
-        .container {
-            margin: 20px;
+        #jsonInput {
+            width: 100%;
+            height: 100px;
         }
-        .input-group {
+        #addAction, #filterInput {
+            margin-top: 10px;
+        }
+        .accordion-item {
+            border: 1px solid #ccc;
+            border-radius: 5px;
             margin-bottom: 10px;
+            padding: 10px;
+            cursor: pointer;
         }
-        .button-container {
-            margin-top: 20px;
+        .accordion-content {
+            display: none;
+            padding-top: 10px;
+        }
+        .accordion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .accordion-header h3 {
+            margin: 0;
         }
         button {
-            margin: 5px 0;
-            padding: 10px;
+            margin-left: 10px;
+        }
+        #filterTab {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
     </style>
 </head>
 <body>
+    <h1>Rewst Actions Manager</h1>
 
-<div class="container">
-    <h1>Rewst Actions - Build Your Copyable Strings Library</h1>
-    <div class="input-group">
-        <label for="buttonName">Button Name:</label><br>
-        <input type="text" id="buttonName" placeholder="Enter button name" size="50">
+    <textarea id="jsonInput" placeholder="Paste your action JSON here"></textarea>
+    <button id="addAction">Add Action</button>
+
+    <div id="filterTab">
+        <input type="text" id="filterInput" placeholder="Search actions...">
+        <button id="sortByName">Sort by Name</button>
     </div>
-    <div class="input-group">
-        <label for="buttonText">Text to Copy:</label><br>
-        <textarea id="buttonText" placeholder="Enter text to copy" rows="5" cols="52"></textarea>
-    </div>
-    <button onclick="addButton()">Add Button</button>
 
-    <div class="button-container" id="buttonContainer">
-        <h2>Copyable Strings:</h2>
-    </div>
-</div>
+    <h2>Actions</h2>
+    <div id="actionsList"></div>
 
-<script>
-    let actions = [];
-
-    window.onload = async function() {
-        try {
-            const loadedActions = await window.electronAPI.loadActions();
-            actions = JSON.parse(loadedActions);
-            loadButtons();  // Reload buttons on page load
-        } catch (error) {
-            console.error('Failed to load actions:', error);
-        }
-    };
-
-    function addButton() {
-        const buttonName = document.getElementById('buttonName').value;
-        const buttonText = document.getElementById('buttonText').value;
-
-        if (buttonName === '' || buttonText === '') {
-            alert('Please fill out both fields');
-            return;
-        }
-
-        const action = { name: buttonName, text: buttonText };
-        actions.push(action);
-
-        createButton(buttonName, buttonText);
-
-        saveActions();
-
-        document.getElementById('buttonName').value = '';
-        document.getElementById('buttonText').value = '';
-    }
-
-    function createButton(name, text) {
-        const newButton = document.createElement('button');
-        newButton.innerText = name;
-
-        const hiddenTextarea = document.createElement('textarea');
-        hiddenTextarea.value = text;
-        hiddenTextarea.style.display = 'none';
-
-        newButton.onclick = function() {
-            document.body.appendChild(hiddenTextarea);
-            hiddenTextarea.select();
-            hiddenTextarea.setSelectionRange(0, 99999);
-            document.execCommand('copy');
-            document.body.removeChild(hiddenTextarea);
-            alert(`Copied: ${name}`);
-        };
-
-        const buttonContainer = document.getElementById('buttonContainer');
-        buttonContainer.appendChild(newButton);
-    }
-
-    async function saveActions() {
-        try {
-            await window.electronAPI.saveActions(actions);
-        } catch (error) {
-            console.error('Failed to save actions:', error);
-        }
-    }
-
-    function loadButtons() {
-        actions.forEach(action => {
-            createButton(action.name, action.text);
-        });
-    }
-</script>
-
-
+    <script src="renderer.js"></script>
 </body>
 </html>

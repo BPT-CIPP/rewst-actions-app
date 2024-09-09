@@ -1,7 +1,14 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Expose APIs to the renderer process via `window.electronAPI`
-contextBridge.exposeInMainWorld('electronAPI', {
-    loadActions: () => ipcRenderer.invoke('load-actions'),
-    saveActions: (data) => ipcRenderer.invoke('save-actions', data)
+// Exposing a safe subset of the ipcRenderer API to the renderer process
+contextBridge.exposeInMainWorld('electron', {
+    send: (channel, data) => {
+        ipcRenderer.send(channel, data);
+    },
+    on: (channel, func) => {
+        ipcRenderer.on(channel, (event, ...args) => func(...args));
+    },
+    invoke: (channel, data) => {
+        return ipcRenderer.invoke(channel, data);
+    }
 });
