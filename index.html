@@ -19,37 +19,49 @@
             padding: 20px;
         }
 
+        body.light-mode {
+            background-color: #ffffff;
+            color: #000000;
+        }
+
         #logo {
             display: block;
             margin: 20px auto;
             max-width: 200px;
         }
 
-        #jsonInput, #filterInput, #addAction, #sortOptions {
+        #jsonInput, #filterInput, #sortOptions {
             display: block;
             margin: 20px auto;
             width: 80%;
+            font-size: 16px; /* Increased font size */
+            padding: 10px;
         }
 
         #jsonInput {
-            height: 30px;
-            padding: 10px;
-            font-size: 16px;
             color: #333;
+            margin-bottom: 40px; /* Increased spacing below JSON input */
         }
 
+        /* Floating Action Button for Adding Actions */
         #addAction {
-            padding: 10px 20px;
+            position: absolute;
+            right: 12%;
+            top: 47px;
             background-color: #007bff;
             border: none;
             color: white;
+            padding: 15px;
+            border-radius: 50%;
+            font-size: 16px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
             cursor: pointer;
-            margin-top: 10px;
-            border-radius: 5px;
-            transition: background-color 0.3s;
+            opacity: 0.5; /* 50% opacity */
+            transition: opacity 0.3s ease, background-color 0.3s ease;
         }
 
         #addAction:hover {
+            opacity: 1;
             background-color: #0056b3;
         }
 
@@ -83,14 +95,6 @@
             background-color: #0056b3;
         }
 
-        .edit-mode.active {
-            background-color: #dc3545;
-        }
-
-        .edit-mode:hover {
-            background-color: #c82333;
-        }
-
         #actionsList {
             display: flex;
             flex-wrap: wrap;
@@ -108,12 +112,17 @@
             height: auto; /* Automatically adjust height based on content */
             text-align: center;
             overflow: hidden; /* Hide anything that overflows */
-            transition: transform 0.3s ease, box-shadow 0.3s ease, width 0.3s ease; /* Smooth transition for width */
+            transition: transform 0.3s ease, box-shadow 0.3s ease, width 0.3s ease, height 0.3s ease; /* Smooth transition for width and height */
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             position: relative;
             cursor: pointer;
             display: inline-block;
             margin: 10px; /* Ensure space between items */
+        }
+
+        body.light-mode .action-item {
+            background-color: #f0f0f0;
+            color: #000000;
         }
 
         .action-item.expanded {
@@ -132,7 +141,7 @@
             overflow: hidden; /* Hide any overflowed text */
             text-overflow: ellipsis; /* Display an ellipsis if text is too long */
             max-width: 100%; /* Ensure it stays within the box */
-            font-size: 16px;
+            font-size: 18px; /* Increased font size */
             font-weight: bold;
         }
 
@@ -160,15 +169,38 @@
             padding: 5px;
             font-size: 14px;
         }
+
+        /* Light/Dark Mode Toggle */
+        #modeToggle {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 1000;
+        }
+
+        body.light-mode #modeToggle {
+            background-color: #333;
+            color: white;
+        }
     </style>
 </head>
 <body>
+    <!-- Light/Dark Mode Toggle Button -->
+    <button id="modeToggle">Toggle Dark Mode</button>
+
     <!-- Logo -->
     <img id="logo" src="logo.png" alt="App Logo" />
 
     <!-- Input to add new actions -->
     <input type="text" id="jsonInput" placeholder="Enter JSON here..." />
-    <button id="addAction">Add Action</button>
+    <button id="addAction">+</button> <!-- Floating Action Button -->
 
     <!-- Search Bar -->
     <input type="text" id="filterInput" placeholder="Search actions...">

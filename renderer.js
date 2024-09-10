@@ -4,6 +4,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     let sortBy = 'name';
     let editMode = false; // Initially, edit mode is off
 
+    // Load light/dark mode preference from localStorage
+    const currentMode = localStorage.getItem('theme');
+    if (currentMode === 'light') {
+        document.body.classList.add('light-mode');
+        document.getElementById('modeToggle').textContent = 'Toggle Dark Mode';
+    }
+
+    // Handle light/dark mode toggle
+    document.getElementById('modeToggle').addEventListener('click', () => {
+        document.body.classList.toggle('light-mode');
+        const mode = document.body.classList.contains('light-mode') ? 'light' : 'dark';
+        localStorage.setItem('theme', mode);
+        document.getElementById('modeToggle').textContent = mode === 'light' ? 'Toggle Dark Mode' : 'Toggle Light Mode';
+    });
+
     // Load actions from the file system on startup
     await loadActionsFromFile();
 
@@ -113,7 +128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderActions();
     }
 
-    // Render actions and set up click-to-expand functionality
+    // Render actions and set up click-to-expand functionality with animation
     function renderActions(filteredActions = actions) {
         const actionsList = document.getElementById('actionsList');
         if (!actionsList) {
@@ -176,6 +191,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const isExpanded = actionItem.classList.contains('expanded');
                     collapseAllItems();  // Collapse all other items
                     actionItem.classList.toggle('expanded', !isExpanded);  // Expand only this one
+
+                    // Add smooth transition for expansion
+                    if (!isExpanded) {
+                        actionItem.style.height = actionItem.scrollHeight + "px";
+                    } else {
+                        actionItem.style.height = "200px"; // Collapsed height
+                    }
                 }
             });
 
@@ -250,6 +272,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const actionItems = document.querySelectorAll('.action-item');
         actionItems.forEach(item => {
             item.classList.remove('expanded');
+            item.style.height = "200px"; // Reset to collapsed height
         });
     }
 
