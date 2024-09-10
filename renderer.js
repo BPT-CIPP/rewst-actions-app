@@ -1,6 +1,11 @@
 document.addEventListener('DOMContentLoaded', async () => {
     let actions = [];
 
+    // Load logo dynamically
+    const logoImg = document.getElementById('logo');
+    const logoPath = 'logo.png'; // Path to your logo file
+    logoImg.src = logoPath;
+
     // Load actions from the file system on startup
     await loadActionsFromFile();
 
@@ -58,6 +63,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderActions();
     });
 
+    // Sort actions by description
+    document.getElementById('sortByDescription').addEventListener('click', () => {
+        actions.sort((a, b) => a.description.localeCompare(b.description));
+        renderActions();
+    });
+
+    // Sort actions by transition mode
+    document.getElementById('sortByTransitionMode').addEventListener('click', () => {
+        actions.sort((a, b) => a.transitionMode.localeCompare(b.transitionMode));
+        renderActions();
+    });
+
+    // Sort actions by pack
+    document.getElementById('sortByPack').addEventListener('click', () => {
+        actions.sort((a, b) => a.pack.localeCompare(b.pack));
+        renderActions();
+    });
+
     // Render actions as an accordion
     function renderActions() {
         const actionsList = document.getElementById('actionsList');
@@ -66,7 +89,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const filterText = document.getElementById('filterInput').value.toLowerCase();
 
         actions.forEach((action, index) => {
-            if (action.name.toLowerCase().includes(filterText) || action.description.toLowerCase().includes(filterText)) {
+            // Expanded search to include all relevant fields
+            const matchText = [
+                action.name.toLowerCase(),
+                action.description.toLowerCase(),
+                action.transitionMode.toLowerCase(),
+                ...action.transitions.map(t => t.when.toLowerCase()),
+                ...action.transitions.flatMap(t => t.publish.map(p => p.toLowerCase())),
+                action.pack.toLowerCase()
+            ].join(' ');
+
+            // If the action matches any of the fields
+            if (matchText.includes(filterText)) {
                 const accordionItem = document.createElement('div');
                 accordionItem.classList.add('accordion-item');
 
@@ -78,6 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const copyButton = document.createElement('button');
                 copyButton.textContent = 'Copy';
+                copyButton.classList.add('copyButton');
                 copyButton.addEventListener('click', (e) => {
                     e.stopPropagation();
                     window.electron.send('copy-action', action.json);
@@ -85,6 +120,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const deleteButton = document.createElement('button');
                 deleteButton.textContent = 'Delete';
+                deleteButton.classList.add('deleteButton');
                 deleteButton.addEventListener('click', (e) => {
                     e.stopPropagation();
                     deleteAction(index);
@@ -99,29 +135,81 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Format the parsed transitions and display details, safely handling empty transitions
                 const transitionsDisplay = action.transitions.length
-                    ? action.transitions.map(t => `
-                        When: ${t.when}
-                            Publish:
-                            ${t.publish.map(p => `• ${p}`).join('\n')}
-                    `).join('\n')
+                    ? action.transitions.map((t, i) => {
+                        const whenAccordionItem = document.createElement('div');
+                        whenAccordionItem.classList.add('accordion-item');
+
+                        const whenAccordionHeader = document.createElement('div');
+                        whenAccordionHeader.classList.add('accordion-header');
+                        whenAccordionHeader.textContent = `${t.when}`;  // Just show the condition, without "When:"
+
+                        const whenAccordionContent = document.createElement('div');
+                        whenAccordionContent.classList.add('accordion-content');
+                        whenAccordionContent.style.display = 'none'; // Initially collapsed
+
+                        // If no publish items, show a placeholder "No Data Aliases"
+                        const publishContent = t.publish.length > 0
+                            ? `<pre>${t.publish.map(p => `• ${p}`).join('\n')}</pre>`
+                            : `<p>No Data Aliases</p>`;
+
+                        whenAccordionContent.innerHTML = `
+                            <p><strong>Publish:</strong></p>
+                            ${publishContent}
+                        `;
+
+                        whenAccordionItem.appendChild(whenAccordionHeader);
+                        whenAccordionItem.appendChild(whenAccordionContent);
+
+                        return whenAccordionItem;
+                    })
                     : 'No Transitions Available';
 
                 accordionContent.innerHTML = `
                     <p><strong>Description:</strong> ${action.description}</p>
                     <p><strong>Transition Mode:</strong> ${action.transitionMode}</p>
                     <p><strong>Transitions:</strong></p>
-                    <pre>${transitionsDisplay}</pre>
-                    <p><strong>Pack:</strong> ${action.pack}</p>
                 `;
+
+                // Append all nested 'When' accordion items
+                if (Array.isArray(transitionsDisplay)) {
+                    transitionsDisplay.forEach(item => accordionContent.appendChild(item));
+                } else {
+                    accordionContent.innerHTML += `<p>${transitionsDisplay}</p>`;
+                }
+
+                accordionContent.innerHTML += `<p><strong>Pack:</strong> ${action.pack}</p>`;
 
                 accordionItem.appendChild(accordionHeader);
                 accordionItem.appendChild(accordionContent);
 
-                accordionHeader.addEventListener('click', () => {
+                // Add event listener to the main action accordion
+                accordionHeader.onclick = () => {
                     accordionContent.style.display = accordionContent.style.display === 'block' ? 'none' : 'block';
-                });
+                };
 
                 actionsList.appendChild(accordionItem);
+            }
+        });
+
+        // Attach click events to all dynamically created "When" headers
+        attachWhenAccordionEvents();
+    }
+
+    // Function to attach click events to all "When" accordion headers
+    function attachWhenAccordionEvents() {
+        const whenAccordionHeaders = document.querySelectorAll('.accordion-header');
+
+        whenAccordionHeaders.forEach(header => {
+            if (!header.textContent.includes('Copy') && !header.textContent.includes('Delete')) {  // Exclude main headers
+                header.onclick = function() {
+                    const content = this.nextElementSibling;
+                    if (content.style.display === 'block') {
+                        content.style.display = 'none';
+                    } else {
+                        content.style.display = 'block';
+                    }
+                    console.log('When accordion clicked'); // Debug log
+                };
             }
         });
     }
@@ -164,3 +252,4 @@ document.addEventListener('DOMContentLoaded', async () => {
         alert(message);
     });
 });
+
