@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
     let actions = [];
+    let isAscending = true;
 
     // Load logo dynamically
     const logoImg = document.getElementById('logo');
@@ -27,8 +28,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const parsedTransitions = transitions.map((transition) => {
                 return {
                     when: transition?.when || 'Unknown',
-                    publish: Array.isArray(transition?.publish) 
-                        ? transition.publish.map(pub => `${pub.key}: ${pub.value}`) 
+                    publish: Array.isArray(transition?.publish)
+                        ? transition.publish.map(pub => `${pub.key}: ${pub.value}`)
                         : [] // Safely handle empty or missing publish arrays
                 };
             });
@@ -57,39 +58,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderActions();
     });
 
-    // Sort actions by name
-    document.getElementById('sortByName').addEventListener('click', () => {
-        actions.sort((a, b) => a.name.localeCompare(b.name));
+    // Toggle sort direction when the "Sort by" button is clicked
+    document.getElementById('sortButton').addEventListener('click', () => {
+        isAscending = !isAscending;
+        document.getElementById('sortIcon').textContent = isAscending ? '⬆️' : '⬇️';  // Toggle between up/down arrow
         renderActions();
     });
 
-    // Sort actions by description
-    document.getElementById('sortByDescription').addEventListener('click', () => {
-        actions.sort((a, b) => a.description.localeCompare(b.description));
+    // Sort select
+    document.getElementById('sortSelect').addEventListener('change', () => {
         renderActions();
     });
 
-    // Sort actions by transition mode
-    document.getElementById('sortByTransitionMode').addEventListener('click', () => {
-        actions.sort((a, b) => a.transitionMode.localeCompare(b.transitionMode));
-        renderActions();
-    });
-
-    // Sort actions by pack
-    document.getElementById('sortByPack').addEventListener('click', () => {
-        actions.sort((a, b) => a.pack.localeCompare(b.pack));
-        renderActions();
-    });
-
-    // Render actions as an accordion
+    // Render actions as square icons
     function renderActions() {
         const actionsList = document.getElementById('actionsList');
         actionsList.innerHTML = '';
 
         const filterText = document.getElementById('filterInput').value.toLowerCase();
+        const sortBy = document.getElementById('sortSelect').value;
+
+        // Sort actions based on user selection
+        actions.sort((a, b) => {
+            const fieldA = (a[sortBy] || '').toLowerCase();
+            const fieldB = (b[sortBy] || '').toLowerCase();
+            return isAscending ? fieldA.localeCompare(fieldB) : fieldB.localeCompare(fieldA);
+        });
 
         actions.forEach((action, index) => {
-            // Expanded search to include all relevant fields
+            // Search across all fields
             const matchText = [
                 action.name.toLowerCase(),
                 action.description.toLowerCase(),
@@ -99,117 +96,100 @@ document.addEventListener('DOMContentLoaded', async () => {
                 action.pack.toLowerCase()
             ].join(' ');
 
-            // If the action matches any of the fields
             if (matchText.includes(filterText)) {
-                const accordionItem = document.createElement('div');
-                accordionItem.classList.add('accordion-item');
+                const actionItem = document.createElement('div');
+                actionItem.classList.add('action-item');
 
-                const accordionHeader = document.createElement('div');
-                accordionHeader.classList.add('accordion-header');
+                // Copy icon next to the title
+                const actionTitle = document.createElement('div');
+                actionTitle.classList.add('action-name');
+                actionTitle.innerHTML = `
+                    ${action.name}
+                    <button class="copy-icon" title="Copy JSON">
+                        <img src="copy-icon.png" alt="Copy">
+                    </button>
+                `;
 
-                const actionTitle = document.createElement('h3');
-                actionTitle.textContent = action.name;
-
-                const copyButton = document.createElement('button');
-                copyButton.textContent = 'Copy';
-                copyButton.classList.add('copyButton');
-                copyButton.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    window.electron.send('copy-action', action.json);
+                // Trigger copy when copy icon next to title is clicked
+                const copyIcon = actionTitle.querySelector('.copy-icon');
+                copyIcon.addEventListener('click', (e) => {
+                    e.stopPropagation();  // Prevent expanding the action
+                    window.electron.send('copy-action', action.json);  // Trigger copy to clipboard
                 });
 
-                const deleteButton = document.createElement('button');
-                deleteButton.textContent = 'Delete';
-                deleteButton.classList.add('deleteButton');
-                deleteButton.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    deleteAction(index);
-                });
-
-                accordionHeader.appendChild(actionTitle);
-                accordionHeader.appendChild(copyButton);
-                accordionHeader.appendChild(deleteButton);
-
-                const accordionContent = document.createElement('div');
-                accordionContent.classList.add('accordion-content');
-
-                // Format the parsed transitions and display details, safely handling empty transitions
-                const transitionsDisplay = action.transitions.length
-                    ? action.transitions.map((t, i) => {
-                        const whenAccordionItem = document.createElement('div');
-                        whenAccordionItem.classList.add('accordion-item');
-
-                        const whenAccordionHeader = document.createElement('div');
-                        whenAccordionHeader.classList.add('accordion-header');
-                        whenAccordionHeader.textContent = `${t.when}`;  // Just show the condition, without "When:"
-
-                        const whenAccordionContent = document.createElement('div');
-                        whenAccordionContent.classList.add('accordion-content');
-                        whenAccordionContent.style.display = 'none'; // Initially collapsed
-
-                        // If no publish items, show a placeholder "No Data Aliases"
-                        const publishContent = t.publish.length > 0
-                            ? `<pre>${t.publish.map(p => `• ${p}`).join('\n')}</pre>`
-                            : `<p>No Data Aliases</p>`;
-
-                        whenAccordionContent.innerHTML = `
-                            <p><strong>Publish:</strong></p>
-                            ${publishContent}
-                        `;
-
-                        whenAccordionItem.appendChild(whenAccordionHeader);
-                        whenAccordionItem.appendChild(whenAccordionContent);
-
-                        return whenAccordionItem;
-                    })
-                    : 'No Transitions Available';
-
-                accordionContent.innerHTML = `
+                const actionDetails = document.createElement('div');
+                actionDetails.classList.add('action-details');
+                actionDetails.innerHTML = `
                     <p><strong>Description:</strong> ${action.description}</p>
                     <p><strong>Transition Mode:</strong> ${action.transitionMode}</p>
                     <p><strong>Transitions:</strong></p>
+                    ${action.transitions.length > 0
+                        ? action.transitions.map((t) => {
+                            const publishItems = t.publish.length > 0
+                                ? t.publish.map(p => `• ${p}`).join('<br>')
+                                : 'No Data Aliases';
+                            return `<p><strong>Condition:</strong> ${t.when}</p>
+                                    <p><strong>Publish:</strong> ${publishItems}</p>`;
+                        }).join('')
+                        : 'No Transitions Available'
+                    }
+                    <p><strong>Pack:</strong> ${action.pack}</p>
                 `;
 
-                // Append all nested 'When' accordion items
-                if (Array.isArray(transitionsDisplay)) {
-                    transitionsDisplay.forEach(item => accordionContent.appendChild(item));
-                } else {
-                    accordionContent.innerHTML += `<p>${transitionsDisplay}</p>`;
-                }
+                // Floating Copy button in the expanded view
+                const floatingCopyButton = document.createElement('button');
+                floatingCopyButton.classList.add('floating-copy-button');
+                floatingCopyButton.textContent = 'Copy';
+                floatingCopyButton.addEventListener('click', (e) => {
+                    e.stopPropagation();  // Prevent closing the action details
+                    window.electron.send('copy-action', action.json);  // Trigger copy to clipboard
+                });
 
-                accordionContent.innerHTML += `<p><strong>Pack:</strong> ${action.pack}</p>`;
+                actionDetails.appendChild(floatingCopyButton);
 
-                accordionItem.appendChild(accordionHeader);
-                accordionItem.appendChild(accordionContent);
+                // Delete button (small trash can icon)
+                const deleteButton = document.createElement('button');
+                deleteButton.classList.add('trash-icon');
+                deleteButton.innerHTML = `<img src="trash-icon.png" alt="Delete">`;
+                deleteButton.addEventListener('click', (e) => {
+                    e.stopPropagation();  // Prevent closing the action details
+                    deleteAction(index);
+                });
 
-                // Add event listener to the main action accordion
-                accordionHeader.onclick = () => {
-                    accordionContent.style.display = accordionContent.style.display === 'block' ? 'none' : 'block';
-                };
+                actionDetails.appendChild(deleteButton);
 
-                actionsList.appendChild(accordionItem);
+                // Toggle expand on click (Expand width and height)
+                actionItem.addEventListener('click', () => {
+                    const isExpanded = actionItem.classList.contains('expanded');
+                    collapseAllItems();  // Collapse all other items
+                    actionItem.classList.toggle('expanded', !isExpanded);  // Expand only this one
+                    actionDetails.style.display = isExpanded ? 'none' : 'block';
+                });
+
+                actionItem.appendChild(actionTitle);
+                actionItem.appendChild(actionDetails);
+                actionsList.appendChild(actionItem);
+
+                // Add context menu for right-click copy
+                actionItem.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();  // Prevent default context menu
+                    const confirmed = confirm('Do you want to copy the JSON?');
+                    if (confirmed) {
+                        window.electron.send('copy-action', action.json);  // Trigger copy to clipboard
+                    }
+                });
             }
         });
-
-        // Attach click events to all dynamically created "When" headers
-        attachWhenAccordionEvents();
     }
 
-    // Function to attach click events to all "When" accordion headers
-    function attachWhenAccordionEvents() {
-        const whenAccordionHeaders = document.querySelectorAll('.accordion-header');
-
-        whenAccordionHeaders.forEach(header => {
-            if (!header.textContent.includes('Copy') && !header.textContent.includes('Delete')) {  // Exclude main headers
-                header.onclick = function() {
-                    const content = this.nextElementSibling;
-                    if (content.style.display === 'block') {
-                        content.style.display = 'none';
-                    } else {
-                        content.style.display = 'block';
-                    }
-                    console.log('When accordion clicked'); // Debug log
-                };
+    // Collapse all other items when expanding a new one
+    function collapseAllItems() {
+        const actionItems = document.querySelectorAll('.action-item');
+        actionItems.forEach(item => {
+            item.classList.remove('expanded');
+            const details = item.querySelector('.action-details');
+            if (details) {
+                details.style.display = 'none';
             }
         });
     }
@@ -238,12 +218,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadActionsFromFile() {
         try {
             const loadedActions = await window.electron.invoke('load-actions');
-            // Ensure loadedActions is an array
             actions = Array.isArray(loadedActions) ? loadedActions : [];
             renderActions();
         } catch (e) {
             console.error('Failed to load actions:', e);
-            actions = []; // Reset to an empty array in case of failure
+            actions = [];
         }
     }
 
@@ -252,4 +231,3 @@ document.addEventListener('DOMContentLoaded', async () => {
         alert(message);
     });
 });
-

@@ -5,28 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rewst Actions Manager</title>
     <style>
-        /* Global styles */
+        /* Dark mode theme */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f5f5f5;
-            color: #333;
+            background-color: #1e1e1e;
+            color: #f5f5f5;
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-        }
-
-        h1 {
-            color: #4a90e2;
-            text-align: center;
         }
 
         #container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #4a90e2;
+            text-align: center;
+            margin-bottom: 20px;
         }
 
         /* Logo */
@@ -36,122 +34,147 @@
             width: 150px;
         }
 
-        /* Input and action button */
-        #jsonInput {
-            width: 100%;
-            height: 100px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            padding: 10px;
-        }
-
-        #addAction {
-            margin-top: 10px;
-            background-color: #4a90e2;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        #addAction:hover {
-            background-color: #357ABD;
-        }
-
-        /* Filter tab */
-        #filterTab {
-            margin-top: 20px;
+        /* Search and Sort Bar */
+        #searchSortBar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
+            margin-bottom: 20px;
         }
 
         #filterInput {
-            width: 50%;
+            width: 60%;
             padding: 10px;
-            border: 1px solid #ccc;
+            border: 1px solid #4a90e2;
             border-radius: 5px;
+            background-color: #2e2e2e;
+            color: #f5f5f5;
         }
 
-        .sort-button {
+        /* Sort Button and Dropdown */
+        #sortContainer {
+            display: flex;
+            align-items: center;
+        }
+
+        #sortButton {
             background-color: #4a90e2;
             color: white;
             padding: 10px 20px;
             border: none;
             border-radius: 5px;
+            display: flex;
+            align-items: center;
             cursor: pointer;
-            margin: 5px;
+            margin-right: 10px;
         }
 
-        .sort-button:hover {
+        #sortButton:hover {
             background-color: #357ABD;
         }
 
-        /* Accordion styling */
-        .accordion-item {
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            margin-bottom: 10px;
-            padding: 10px;
-            background-color: #fafafa;
-            transition: all 0.3s ease;
-        }
-
-        .accordion-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .accordion-header:hover {
-            background-color: #f0f0f0;
-        }
-
-        .accordion-content {
-            display: none; /* Hidden by default */
-            padding-top: 10px;
-            color: #666;
-        }
-
-        .accordion-content pre {
-            background-color: #f7f7f7;
-            padding: 10px;
-            border-radius: 5px;
-            overflow: auto;
-        }
-
-        /* Button styles */
-        button {
+        #sortIcon {
             margin-left: 10px;
-            padding: 6px 12px;
+        }
+
+        #sortSelect {
+            padding: 10px;
+            border: 1px solid #4a90e2;
             border-radius: 5px;
+            background-color: #2e2e2e;
+            color: #f5f5f5;
+            cursor: pointer;
+        }
+
+        /* Action icon styling */
+        .actions-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .action-item {
+            background-color: #2e2e2e;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            position: relative;
+            transition: transform 0.2s ease, background-color 0.3s ease;
+            cursor: pointer;
+            max-width: 200px;
+            overflow: hidden;
+            flex: 1 1 calc(200px); /* Default size */
+            margin-bottom: 20px;
+        }
+
+        .action-item.expanded {
+            width: 100%; /* Expanded to full width */
+            flex: 1 1 100%; /* Take full width when expanded */
+            max-width: none;
+            display: block;
+        }
+
+        .action-item:hover {
+            background-color: #4a90e2;
+        }
+
+        .action-name {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #f5f5f5;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .copy-icon {
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            display: inline-block;
+            margin-left: 10px;
+        }
+
+        .copy-icon img {
+            width: 16px;
+        }
+
+        /* Expanded content */
+        .action-details {
+            display: none;
+            margin-top: 10px;
+            max-width: 100%;
+            white-space: normal;
+        }
+
+        .floating-copy-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        .floating-copy-button:hover {
+            background-color: #357ABD;
+        }
+
+        .trash-icon {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background-color: transparent;
             border: none;
             cursor: pointer;
         }
 
-        .copyButton {
-            background-color: #4CAF50;
-            color: white;
+        .trash-icon img {
+            width: 20px;
         }
-
-        .copyButton:hover {
-            background-color: #45a049;
-        }
-
-        .deleteButton {
-            background-color: #f44336;
-            color: white;
-        }
-
-        .deleteButton:hover {
-            background-color: #e53935;
-        }
-
     </style>
 </head>
 <body>
@@ -161,22 +184,25 @@
 
         <h1>Rewst Actions Manager</h1>
 
-        <!-- Input for adding new actions -->
-        <textarea id="jsonInput" placeholder="Paste your action JSON here"></textarea>
-        <button id="addAction">Add Action</button>
-
-        <!-- Filter and Sort Tab -->
-        <div id="filterTab">
-            <input type="text" id="filterInput" placeholder="Search actions by any value...">
-            <button class="sort-button" id="sortByName">Sort by Name</button>
-            <button class="sort-button" id="sortByDescription">Sort by Description</button>
-            <button class="sort-button" id="sortByTransitionMode">Sort by Transition Mode</button>
-            <button class="sort-button" id="sortByPack">Sort by Pack</button>
+        <!-- Search and Sort Bar -->
+        <div id="searchSortBar">
+            <input type="text" id="filterInput" placeholder="Search actions...">
+            <div id="sortContainer">
+                <button id="sortButton">
+                    Sort by
+                    <span id="sortIcon">⬆️</span> <!-- Up arrow for ascending -->
+                </button>
+                <select id="sortSelect">
+                    <option value="name">Name</option>
+                    <option value="description">Description</option>
+                    <option value="transitionMode">Transition Mode</option>
+                    <option value="pack">Pack</option>
+                </select>
+            </div>
         </div>
 
-        <!-- List of actions -->
-        <h2>Actions</h2>
-        <div id="actionsList"></div>
+        <!-- List of actions as square icons -->
+        <div class="actions-grid" id="actionsList"></div>
     </div>
 
     <script src="renderer.js"></script>
