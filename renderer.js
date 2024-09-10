@@ -1,296 +1,280 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // Ensure these elements exist in your HTML
-    const addActionBtn = document.getElementById('addAction');
-    const filterInput = document.getElementById('filterInput');
-    const sortButton = document.getElementById('sortButton');
-    const sortSelect = document.getElementById('sortSelect');
-    const sortIcon = document.getElementById('sortIcon');
+    let actions = [];
+    let isAscending = true;
+    let sortBy = 'name';
+    let editMode = false; // Initially, edit mode is off
 
-    // Check if elements are found before adding event listeners
-    if (addActionBtn && filterInput && sortButton && sortSelect && sortIcon) {
-        let actions = [];
-        let isAscending = true; // Default sorting order is ascending
-        let sortBy = 'name'; // Default sort field is 'name'
+    // Load actions from the file system on startup
+    await loadActionsFromFile();
 
-        // Load actions from the file system on startup
-        await loadActionsFromFile();
+    // Add action to the list
+    document.getElementById('addAction').addEventListener('click', () => {
+        const jsonInput = document.getElementById('jsonInput').value;
+        try {
+            const actionData = JSON.parse(jsonInput);
+            const actionName = actionData?.data?.name || 'Unnamed Action';
+            const actionDescription = actionData?.data?.description || 'No Description Provided';
+            const transitionMode = actionData?.data?.transitionMode || 'No Transition Mode';
+            const transitions = actionData?.data?.next || [];
+            const pack = actionData?.data?.action?.pack?.name || 'Unknown Pack';
 
-        // Add action to the list
-        addActionBtn.addEventListener('click', () => {
-            const jsonInput = document.getElementById('jsonInput').value;
-
-            try {
-                const actionData = JSON.parse(jsonInput);
-
-                // Extract necessary data, ensure we handle undefined or missing properties safely
-                const actionName = actionData?.data?.name || 'Unnamed Action';
-                const actionDescription = actionData?.data?.description || 'No Description Provided';
-                const transitionMode = actionData?.data?.transitionMode || 'No Transition Mode';
-                const transitions = actionData?.data?.next || [];
-                const pack = actionData?.data?.action?.pack?.name || 'Unknown Pack';
-
-                // Safely handle transitions and publish arrays
-                const parsedTransitions = transitions.map((transition) => {
-                    return {
-                        when: transition?.when || 'Unknown',
-                        publish: Array.isArray(transition?.publish)
-                            ? transition.publish.map(pub => `${pub.key}: ${pub.value}`)
-                            : [] // Safely handle empty or missing publish arrays
-                    };
-                });
-
-                actions.push({
-                    name: actionName,
-                    alias: '',  // Alias (nickname) will be stored here
-                    description: actionDescription,
-                    transitionMode: transitionMode,
-                    transitions: parsedTransitions,
-                    pack: pack,
-                    json: jsonInput // Store the raw JSON for future reference
-                });
-
-                // Save updated actions to file
-                saveActionsToFile();
-
-                document.getElementById('jsonInput').value = '';
-                renderActions();
-            } catch (e) {
-                alert('Invalid JSON. Please check your input.');
-            }
-        });
-
-        // Filter actions (Search bar functionality)
-        filterInput.addEventListener('input', () => {
-            renderActions(); // Re-render actions on search input change
-        });
-
-        // Toggle sort direction when the "Sort by" button is clicked
-        sortButton.addEventListener('click', () => {
-            isAscending = !isAscending;
-            sortIcon.textContent = isAscending ? '⬆️' : '⬇️';  // Toggle between up/down arrow
-            renderActions();
-        });
-
-        // Sort select dropdown change (Sort by field change)
-        sortSelect.addEventListener('change', (e) => {
-            sortBy = e.target.value; // Update the sortBy field based on dropdown selection
-            renderActions();
-        });
-
-        // Render actions as square icons
-        function renderActions() {
-            const actionsList = document.getElementById('actionsList');
-            actionsList.innerHTML = ''; // Clear the existing list
-
-            const filterText = filterInput.value.toLowerCase(); // Search text from input
-
-            // Sort actions based on user selection
-            actions.sort((a, b) => {
-                const fieldA = (a[sortBy] || '').toLowerCase(); // Use the selected field to sort
-                const fieldB = (b[sortBy] || '').toLowerCase();
-                return isAscending ? fieldA.localeCompare(fieldB) : fieldB.localeCompare(fieldA); // Ascending or descending
+            actions.push({
+                name: actionName,
+                alias: '', 
+                description: actionDescription,
+                transitionMode: transitionMode,
+                transitions: transitions.map(t => ({
+                    when: t.when || 'Unknown',
+                    publish: t.publish.map(p => `${p.key}: ${p.value}`)
+                })),
+                pack: pack,
+                json: jsonInput 
             });
 
-            actions.forEach((action, index) => {
-                // Ensure default values for alias, name, and description
-                const alias = action.alias || '';
-                const name = action.name || 'Unnamed Action';
-                const description = action.description || 'No Description Provided';
-
-                // Search across all fields, including the alias
-                const matchText = [
-                    alias.toLowerCase(),  // Include alias in search
-                    name.toLowerCase(),
-                    description.toLowerCase(),
-                    action.transitionMode.toLowerCase(),
-                    ...action.transitions.map(t => t.when.toLowerCase()),
-                    ...action.transitions.flatMap(t => t.publish.map(p => p.toLowerCase())),
-                    action.pack.toLowerCase()
-                ].join(' ');
-
-                // Filter actions based on search input
-                if (matchText.includes(filterText)) {
-                    const actionItem = document.createElement('div');
-                    actionItem.classList.add('action-item');
-
-                    // Use alias if it exists, otherwise show the name
-                    const displayName = alias || name;
-
-                    // Copy icon next to the title
-                    const actionTitle = document.createElement('div');
-                    actionTitle.classList.add('action-name');
-                    actionTitle.innerHTML = `
-                        ${displayName}
-                        <button class="copy-icon" title="Copy JSON">
-                            <img src="copy-icon.png" alt="Copy">
-                        </button>
-                    `;
-
-                    // Trigger copy when copy icon next to title is clicked
-                    const copyIcon = actionTitle.querySelector('.copy-icon');
-                    copyIcon.addEventListener('click', (e) => {
-                        e.stopPropagation();  // Prevent expanding the action
-                        window.electron.send('copy-action', action.json);  // Trigger copy to clipboard
-                    });
-
-                    const actionDetails = document.createElement('div');
-                    actionDetails.classList.add('action-details');
-                    actionDetails.innerHTML = `
-                        <p><strong>Alias:</strong> ${alias || 'No Alias Set'}</p>
-                        <p><strong>Original Name:</strong> ${name}</p>
-                        <p><strong>Description:</strong> ${description}</p>
-                        <p><strong>Transition Mode:</strong> ${action.transitionMode}</p>
-                        <p><strong>Transitions:</strong></p>
-                        ${action.transitions.length > 0
-                            ? action.transitions.map((t) => {
-                                const publishItems = t.publish.length > 0
-                                    ? t.publish.map(p => `• ${p}`).join('<br>')
-                                    : 'No Data Aliases';
-                                return `<p><strong>Condition:</strong> ${t.when}</p>
-                                        <p><strong>Publish:</strong> ${publishItems}</p>`;
-                            }).join('')
-                            : 'No Transitions Available'
-                        }
-                        <p><strong>Pack:</strong> ${action.pack}</p>
-                    `;
-
-                    // Add Alias button and input field
-                    const aliasButton = document.createElement('button');
-                    aliasButton.classList.add('alias-button');
-                    aliasButton.textContent = alias ? 'Edit Alias' : 'Add Alias';
-
-                    // Alias input field (initially hidden)
-                    const aliasInput = document.createElement('input');
-                    aliasInput.type = 'text';
-                    aliasInput.placeholder = 'Enter alias';
-                    aliasInput.value = alias || '';
-                    aliasInput.style.display = 'none';  // Hide input by default
-
-                    // Save Alias button (only shown when editing alias)
-                    const saveAliasButton = document.createElement('button');
-                    saveAliasButton.textContent = 'Save Alias';
-                    saveAliasButton.style.display = 'none';  // Hide save button by default
-
-                    // Prevent collapsing when clicking on alias input or save button
-                    aliasInput.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                    });
-                    saveAliasButton.addEventListener('click', (e) => {
-                        e.stopPropagation();  // Prevent collapsing
-                        const newAlias = aliasInput.value.trim();
-                        if (newAlias !== '') {
-                            action.alias = newAlias;  // Set the new alias
-                            saveActionsToFile();  // Save the updated alias
-                            renderActions();  // Re-render the actions
-                        }
-                    });
-
-                    aliasButton.addEventListener('click', (e) => {
-                        e.stopPropagation();  // Prevent closing the action details
-                        aliasInput.style.display = 'block';  // Show the input field
-                        saveAliasButton.style.display = 'block';  // Show the save button
-                        aliasButton.style.display = 'none';  // Hide the alias button during edit
-                    });
-
-                    actionDetails.appendChild(aliasButton);
-                    actionDetails.appendChild(aliasInput);  // Add input field to the details
-                    actionDetails.appendChild(saveAliasButton);  // Add save button to the details
-
-                    // Floating Copy button in the expanded view
-                    const floatingCopyButton = document.createElement('button');
-                    floatingCopyButton.classList.add('floating-copy-button');
-                    floatingCopyButton.textContent = 'Copy';
-                    floatingCopyButton.addEventListener('click', (e) => {
-                        e.stopPropagation();  // Prevent closing the action details
-                        window.electron.send('copy-action', action.json);  // Trigger copy to clipboard
-                    });
-
-                    actionDetails.appendChild(floatingCopyButton);
-
-                    // Delete button (small trash can icon)
-                    const deleteButton = document.createElement('button');
-                    deleteButton.classList.add('trash-icon');
-                    deleteButton.innerHTML = `<img src="trash-icon.png" alt="Delete">`;
-                    deleteButton.addEventListener('click', (e) => {
-                        e.stopPropagation();  // Prevent closing the action details
-                        deleteAction(index);
-                    });
-
-                    actionDetails.appendChild(deleteButton);
-
-                    // Toggle expand on click (Expand width and height)
-                    actionItem.addEventListener('click', () => {
-                        const isExpanded = actionItem.classList.contains('expanded');
-                        collapseAllItems();  // Collapse all other items
-                        actionItem.classList.toggle('expanded', !isExpanded);  // Expand only this one
-                        actionDetails.style.display = isExpanded ? 'none' : 'block';
-                    });
-
-                    actionItem.appendChild(actionTitle);
-                    actionItem.appendChild(actionDetails);
-                    actionsList.appendChild(actionItem);
-
-                    // Add context menu for right-click copy
-                    actionItem.addEventListener('contextmenu', (e) => {
-                        e.preventDefault();  // Prevent default context menu
-                        const confirmed = confirm('Do you want to copy the JSON?');
-                        if (confirmed) {
-                            window.electron.send('copy-action', action.json);  // Trigger copy to clipboard
-                        }
-                    });
-                }
-            });
-        }
-
-        // Collapse all other items when expanding a new one
-        function collapseAllItems() {
-            const actionItems = document.querySelectorAll('.action-item');
-            actionItems.forEach(item => {
-                item.classList.remove('expanded');
-                const details = item.querySelector('.action-details');
-                if (details) {
-                    details.style.display = 'none';
-                }
-            });
-        }
-
-        // Delete action
-        function deleteAction(index) {
-            actions.splice(index, 1);
             saveActionsToFile();
             renderActions();
+        } catch (e) {
+            alert('Invalid JSON. Please check your input.');
         }
+    });
 
-        // Save actions to the file system
-        function saveActionsToFile() {
-            window.electron.send('save-actions', actions);
+    // Search functionality
+    const filterInput = document.getElementById('filterInput');
+    filterInput.addEventListener('input', () => {
+        const query = filterInput.value.toLowerCase();
+        const filteredActions = actions.filter(action => {
+            const searchFields = [
+                action.name || '',
+                action.description || '',
+                action.pack || '',
+                action.alias || ''
+            ];
+            return searchFields.some(field => field.toLowerCase().includes(query));
+        });
+        renderActions(filteredActions); // Render only the filtered results
+    });
 
-            window.electron.on('save-actions-result', (result) => {
-                if (result.success) {
-                    console.log('Actions saved successfully');
-                } else {
-                    console.error('Failed to save actions:', result.error);
+    // Toggle Edit Mode to enable/disable drag-and-drop
+    const editModeToggle = document.getElementById('editModeToggle');
+    editModeToggle.addEventListener('click', () => {
+        editMode = !editMode;
+        if (editMode) {
+            editModeToggle.textContent = 'Disable Edit Mode';
+            editModeToggle.classList.add('active');
+            $('#actionsList').sortable('enable'); // Enable dragging
+        } else {
+            editModeToggle.textContent = 'Enable Edit Mode';
+            editModeToggle.classList.remove('active');
+            $('#actionsList').sortable('disable'); // Disable dragging
+        }
+    });
+
+    // Initially, disable dragging
+    $('#actionsList').sortable({ disabled: true });
+
+    // Handle sorting
+    const sortSelect = document.getElementById('sortSelect');
+    const sortButton = document.getElementById('sortButton');
+
+    sortSelect.addEventListener('change', handleSortChange);
+    sortButton.addEventListener('click', () => {
+        isAscending = !isAscending;
+        handleSortChange();
+    });
+
+    function handleSortChange() {
+        sortBy = sortSelect.value;
+        if (sortBy === 'manual') {
+            // Enable drag-and-drop, disable sorting
+            editModeToggle.style.display = 'inline';
+            $('#actionsList').sortable('enable');
+        } else {
+            // Hide the Edit Mode button, disable drag-and-drop, and sort items
+            editModeToggle.style.display = 'none';
+            $('#actionsList').sortable('disable');
+            sortActions();
+        }
+    }
+
+    function sortActions() {
+        if (sortBy === 'manual') return; // Manual sorting is enabled, don't sort
+
+        actions.sort((a, b) => {
+            const fieldA = a[sortBy]?.toLowerCase() || '';
+            const fieldB = b[sortBy]?.toLowerCase() || '';
+
+            if (isAscending) {
+                return fieldA.localeCompare(fieldB);
+            } else {
+                return fieldB.localeCompare(fieldA);
+            }
+        });
+
+        renderActions();
+    }
+
+    // Render actions and set up click-to-expand functionality
+    function renderActions(filteredActions = actions) {
+        const actionsList = document.getElementById('actionsList');
+        if (!actionsList) {
+            console.error('Actions list element not found');
+            return;
+        }
+        actionsList.innerHTML = ''; 
+
+        filteredActions.forEach((action, index) => {
+            const actionItem = document.createElement('div');
+            actionItem.classList.add('action-item');
+            
+            // Use alias if available, otherwise show the name
+            const actionDisplayName = action.alias ? action.alias : action.name;
+            const actionDescription = action.description || 'No description available';
+            const actionTransitionMode = action.transitionMode || 'No transition mode';
+            const actionPack = action.pack || 'No pack available';
+
+            // Build transition list
+            const transitionDetails = action.transitions.map(transition => {
+                const publishDetails = transition.publish.length > 0
+                    ? transition.publish.map(pub => `<span>CTX.${pub}</span>`).join(', ')
+                    : 'No Data Aliases';
+
+                return `
+                    <li>
+                        <div><strong>Publish:</strong> ${publishDetails}</div>
+                    </li>`;
+            }).join('');
+
+            // Alias, delete, and copy buttons
+            const aliasButton = `<button class="alias-button">Add Alias</button>`;
+            const deleteButton = `<button class="delete-button">🗑️</button>`;
+            const copyButton = `<button class="copy-button">Copy JSON</button>`;
+            const floatingCopyIcon = `<div class="floating-copy-icon" style="display:none;">📋</div>`;
+
+            // Alias input field
+            const aliasInput = action.alias 
+                ? `<input type="text" class="alias-input" value="${action.alias}" style="display:none;">` 
+                : `<input type="text" class="alias-input" placeholder="Type alias..." style="display:none;">`;
+
+            actionItem.innerHTML = `
+                <div class="action-name">${actionDisplayName}</div>
+                <div class="action-details">
+                    <p><strong>Description:</strong> ${actionDescription}</p>
+                    <p><strong>Transition Mode:</strong> ${actionTransitionMode}</p>
+                    <p><strong>Pack:</strong> ${actionPack}</p>
+                    <div><strong>Transitions:</strong></div>
+                    <ul>${transitionDetails}</ul>
+                    ${aliasButton}
+                    ${aliasInput}
+                    ${copyButton}
+                    ${deleteButton}
+                    ${floatingCopyIcon}
+                </div>`;
+
+            // Handle expand/collapse on click (ignore alias button and inputs)
+            actionItem.addEventListener('click', (event) => {
+                if (!event.target.classList.contains('alias-button') && event.target.tagName !== 'INPUT') {
+                    const isExpanded = actionItem.classList.contains('expanded');
+                    collapseAllItems();  // Collapse all other items
+                    actionItem.classList.toggle('expanded', !isExpanded);  // Expand only this one
                 }
             });
-        }
 
-        // Load actions from the file system
-        async function loadActionsFromFile() {
-            try {
-                const loadedActions = await window.electron.invoke('load-actions');
-                actions = Array.isArray(loadedActions) ? loadedActions : [];
+            // Handle adding an alias (prevent action from closing when editing alias)
+            actionItem.querySelector('.alias-button').addEventListener('click', (event) => {
+                event.stopPropagation(); // Prevent closing the item
+                const aliasInputField = actionItem.querySelector('.alias-input');
+                aliasInputField.style.display = 'inline'; // Show the input field for typing
+                aliasInputField.focus();
+
+                // Save alias on Enter key press
+                aliasInputField.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        action.alias = aliasInputField.value;
+                        saveActionsToFile();
+                        renderActions();  // Re-render to show updated alias
+                    }
+                });
+            });
+
+            // Handle deleting an action
+            actionItem.querySelector('.delete-button').addEventListener('click', (event) => {
+                event.stopPropagation(); // Prevent collapsing
+                actions.splice(index, 1);
+                saveActionsToFile();
                 renderActions();
-            } catch (e) {
-                console.error('Failed to load actions:', e);
-                actions = [];
-            }
-        }
+            });
 
-        // Listen for action copied confirmation
-        window.electron.on('action-copied', (message) => {
-            alert(message);
+            // Handle copying action JSON to clipboard via button
+            actionItem.querySelector('.copy-button').addEventListener('click', (event) => {
+                event.stopPropagation(); // Prevent collapsing
+                navigator.clipboard.writeText(action.json).then(() => {
+                    alert("Action JSON copied to clipboard!");
+                });
+            });
+
+            // Handle right-click for copy functionality
+            actionItem.addEventListener('contextmenu', (event) => {
+                event.preventDefault(); // Prevent context menu
+                navigator.clipboard.writeText(action.json).then(() => {
+                    alert("Action JSON copied to clipboard via right-click!");
+                });
+            });
+
+            // Show floating copy icon on hover (only when expanded)
+            actionItem.addEventListener('mouseover', () => {
+                const copyIcon = actionItem.querySelector('.floating-copy-icon');
+                if (actionItem.classList.contains('expanded')) {
+                    copyIcon.style.display = 'block';
+                }
+            });
+
+            actionItem.addEventListener('mouseout', () => {
+                const copyIcon = actionItem.querySelector('.floating-copy-icon');
+                copyIcon.style.display = 'none';
+            });
+
+            // Handle copying via the floating copy icon
+            actionItem.querySelector('.floating-copy-icon').addEventListener('click', (event) => {
+                event.stopPropagation(); // Prevent collapsing
+                navigator.clipboard.writeText(action.json).then(() => {
+                    alert("Action JSON copied using the floating icon!");
+                });
+            });
+
+            actionsList.appendChild(actionItem);
         });
-    } else {
-        console.error("One or more required elements were not found in the DOM.");
+    }
+
+    // Collapse all action items
+    function collapseAllItems() {
+        const actionItems = document.querySelectorAll('.action-item');
+        actionItems.forEach(item => {
+            item.classList.remove('expanded');
+        });
+    }
+
+    // Load actions from file (real implementation)
+    async function loadActionsFromFile() {
+        try {
+            const loadedActions = await window.electron.invoke('load-actions');
+            actions = Array.isArray(loadedActions) ? loadedActions : [];
+            renderActions();
+        } catch (error) {
+            console.error('Failed to load actions:', error);
+            actions = [];
+        }
+    }
+
+    // Save actions to the file system
+    function saveActionsToFile() {
+        window.electron.send('save-actions', actions);
+
+        window.electron.on('save-actions-result', (result) => {
+            if (result.success) {
+                console.log('Actions saved successfully');
+            } else {
+                console.error('Failed to save actions:', result.error);
+            }
+        });
     }
 });

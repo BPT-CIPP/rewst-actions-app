@@ -4,13 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rewst Actions App</title>
-    <link rel="stylesheet" href="style.css">
+    <!-- Include Google Fonts for Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+    
+    <!-- Include jQuery and jQuery UI -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
     <style>
-        /* Basic styling */
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Montserrat', sans-serif;
             background-color: #1e1e1e;
             color: #ffffff;
+            padding: 20px;
         }
 
         #logo {
@@ -26,7 +32,7 @@
         }
 
         #jsonInput {
-            height: 30px; /* Shrink to a single line */
+            height: 30px;
             padding: 10px;
             font-size: 16px;
             color: #333;
@@ -39,28 +45,50 @@
             color: white;
             cursor: pointer;
             margin-top: 10px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        #addAction:hover {
+            background-color: #0056b3;
         }
 
         #filterInput {
             padding: 10px;
             width: 80%;
             font-size: 16px;
+            color: #000;
         }
 
         #sortOptions {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
             align-items: center;
             width: 80%;
             margin: 20px auto;
+            gap: 10px; /* Add space between elements */
         }
 
-        #sortSelect, #sortButton {
+        #sortSelect, #sortButton, .edit-mode {
             padding: 10px;
             background-color: #007bff;
             border: none;
             color: white;
             cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        #sortSelect:hover, #sortButton:hover, .edit-mode:hover {
+            background-color: #0056b3;
+        }
+
+        .edit-mode.active {
+            background-color: #dc3545;
+        }
+
+        .edit-mode:hover {
+            background-color: #c82333;
         }
 
         #actionsList {
@@ -74,51 +102,63 @@
 
         .action-item {
             background-color: #333;
-            border-radius: 8px;
+            border-radius: 10px;
             padding: 20px;
-            width: 300px;
-            max-width: 100%; /* Ensure it expands to the full view width */
-            transition: transform 0.3s ease, width 0.3s ease, height 0.3s ease;
+            width: 200px; /* Fixed width for collapsed state */
+            height: auto; /* Automatically adjust height based on content */
+            text-align: center;
+            overflow: hidden; /* Hide anything that overflows */
+            transition: transform 0.3s ease, box-shadow 0.3s ease, width 0.3s ease; /* Smooth transition for width */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            position: relative;
+            cursor: pointer;
+            display: inline-block;
+            margin: 10px; /* Ensure space between items */
         }
 
         .action-item.expanded {
-            width: 100%; /* Expand width when selected */
-            height: auto; /* Automatically adjust height */
-            max-width: 100%;
+            width: 100%; /* Expand to fill the full container width */
+            height: auto; /* Adjust height dynamically */
+            max-width: none; /* Remove max-width constraint for expanded state */
+        }
+
+        .action-item:hover {
+            transform: scale(1.03);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
         }
 
         .action-name {
-            font-size: 18px;
+            white-space: nowrap; /* Prevent text from wrapping */
+            overflow: hidden; /* Hide any overflowed text */
+            text-overflow: ellipsis; /* Display an ellipsis if text is too long */
+            max-width: 100%; /* Ensure it stays within the box */
+            font-size: 16px;
             font-weight: bold;
-        }
-
-        .copy-icon img {
-            width: 20px;
-            margin-left: 10px;
-            cursor: pointer;
         }
 
         .action-details {
             display: none;
             margin-top: 10px;
+            word-wrap: break-word; /* Ensure long text wraps inside the box */
         }
 
         .expanded .action-details {
             display: block;
         }
 
-        .floating-copy-button, .alias-button, .trash-icon {
-            background-color: #007bff;
-            border: none;
-            color: white;
+        .floating-copy-icon {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            font-size: 18px;
             cursor: pointer;
-            padding: 8px 12px;
-            margin-top: 10px;
-            border-radius: 4px;
+            display: none; /* Initially hidden */
         }
 
-        .trash-icon img {
-            width: 20px;
+        .alias-input {
+            margin-top: 10px;
+            padding: 5px;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -126,22 +166,26 @@
     <!-- Logo -->
     <img id="logo" src="logo.png" alt="App Logo" />
 
-    <!-- Input to add new actions (shrink to a single line) -->
+    <!-- Input to add new actions -->
     <input type="text" id="jsonInput" placeholder="Enter JSON here..." />
     <button id="addAction">Add Action</button>
 
     <!-- Search Bar -->
     <input type="text" id="filterInput" placeholder="Search actions...">
 
-    <!-- Sort Dropdown and Sort Button -->
+    <!-- Sort Dropdown, Sort Button, and Edit Mode Button -->
     <div id="sortOptions">
         <label for="sortSelect">Sort by: </label>
         <select id="sortSelect">
             <option value="name">Name</option>
             <option value="description">Description</option>
             <option value="pack">Pack</option>
+            <option value="manual">Manual</option>
         </select>
         <button id="sortButton">Sort <span id="sortIcon">⬆️</span></button>
+
+        <!-- Edit Mode Button (Initially Hidden) -->
+        <button class="edit-mode" id="editModeToggle" style="display:none;">Enable Edit Mode</button>
     </div>
 
     <!-- Action List -->
