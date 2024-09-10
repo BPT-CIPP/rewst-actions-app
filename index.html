@@ -17,6 +17,7 @@
             background-color: #1e1e1e;
             color: #ffffff;
             padding: 20px;
+            position: relative;
         }
 
         body.light-mode {
@@ -24,30 +25,44 @@
             color: #000000;
         }
 
+        /* Shrink logo and move it to top-left */
         #logo {
-            display: block;
-            margin: 20px auto;
-            max-width: 200px;
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            width: 7.5%; /* Shrunk the logo size */
+            max-width: 75px; /* Limit the maximum width */
+            height: auto; /* Maintain aspect ratio */
         }
 
-        #jsonInput, #filterInput, #sortOptions {
-            display: block;
-            margin: 20px auto;
+        /* Center the rest of the content */
+        .content {
+            margin-top: 100px;
+            text-align: center;
+        }
+
+        #jsonInputContainer {
+            display: inline-flex;
+            align-items: center;
             width: 80%;
-            font-size: 16px; /* Increased font size */
-            padding: 10px;
+            margin: 20px auto;
+            position: relative;
         }
 
         #jsonInput {
+            flex: 1;
+            padding: 10px;
+            height: 30px;
+            font-size: 16px;
             color: #333;
-            margin-bottom: 40px; /* Increased spacing below JSON input */
+            border-radius: 5px;
+            border: 1px solid #007bff;
+            margin-right: 10px;
         }
 
-        /* Floating Action Button for Adding Actions */
+        /* Floating Add Button inside JSON input container */
         #addAction {
-            position: absolute;
-            right: 12%;
-            top: 47px;
+            position: relative;
             background-color: #007bff;
             border: none;
             color: white;
@@ -58,6 +73,7 @@
             cursor: pointer;
             opacity: 0.5; /* 50% opacity */
             transition: opacity 0.3s ease, background-color 0.3s ease;
+            margin-left: -50px; /* Pull the button inside the input */
         }
 
         #addAction:hover {
@@ -70,6 +86,8 @@
             width: 80%;
             font-size: 16px;
             color: #000;
+            border-radius: 5px;
+            margin: 20px auto;
         }
 
         #sortOptions {
@@ -193,35 +211,39 @@
 </head>
 <body>
     <!-- Light/Dark Mode Toggle Button -->
-    <button id="modeToggle">Toggle Dark Mode</button>
+    <button id="modeToggle">Toggle Light Mode</button>
 
-    <!-- Logo -->
+    <!-- Shrunk Logo in top-left corner -->
     <img id="logo" src="logo.png" alt="App Logo" />
 
-    <!-- Input to add new actions -->
-    <input type="text" id="jsonInput" placeholder="Enter JSON here..." />
-    <button id="addAction">+</button> <!-- Floating Action Button -->
+    <div class="content">
+        <!-- JSON Input with Floating Add Button -->
+        <div id="jsonInputContainer">
+            <input type="text" id="jsonInput" placeholder="Enter JSON here..." />
+            <button id="addAction">+</button> <!-- Floating Add Action Button -->
+        </div>
 
-    <!-- Search Bar -->
-    <input type="text" id="filterInput" placeholder="Search actions...">
+        <!-- Search Bar -->
+        <input type="text" id="filterInput" placeholder="Search actions...">
 
-    <!-- Sort Dropdown, Sort Button, and Edit Mode Button -->
-    <div id="sortOptions">
-        <label for="sortSelect">Sort by: </label>
-        <select id="sortSelect">
-            <option value="name">Name</option>
-            <option value="description">Description</option>
-            <option value="pack">Pack</option>
-            <option value="manual">Manual</option>
-        </select>
-        <button id="sortButton">Sort <span id="sortIcon">⬆️</span></button>
+        <!-- Sort Dropdown, Sort Button, and Edit Mode Button -->
+        <div id="sortOptions">
+            <label for="sortSelect">Sort by: </label>
+            <select id="sortSelect">
+                <option value="name">Name</option>
+                <option value="description">Description</option>
+                <option value="pack">Pack</option>
+                <option value="manual">Manual</option>
+            </select>
+            <button id="sortButton">Sort <span id="sortIcon">⬆️</span></button>
 
-        <!-- Edit Mode Button (Initially Hidden) -->
-        <button class="edit-mode" id="editModeToggle" style="display:none;">Enable Edit Mode</button>
+            <!-- Edit Mode Button (Initially Hidden) -->
+            <button class="edit-mode" id="editModeToggle" style="display:none;">Enable Edit Mode</button>
+        </div>
+
+        <!-- Action List -->
+        <div id="actionsList"></div>
     </div>
-
-    <!-- Action List -->
-    <div id="actionsList"></div>
 
     <!-- Include your scripts -->
     <script src="renderer.js"></script>
