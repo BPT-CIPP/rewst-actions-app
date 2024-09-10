@@ -4,29 +4,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     let sortBy = 'name';
     let editMode = false; // Initially, edit mode is off
 
-    // Load light/dark mode preference from localStorage
-    const currentMode = localStorage.getItem('theme');
-    if (currentMode === 'light') {
-        document.body.classList.add('light-mode');
-        document.getElementById('modeToggle').textContent = 'Toggle Dark Mode';
-    }
+    // Ensure themeSwitch is defined after loading the JS file
+    if (typeof themeSwitch === 'function') {
+        themeSwitch({
+            selector: '#theme-switch', // Attach it to the bottom-left div
+            savedTheme: true,          // Remember the user's preference
+            storageKey: 'theme',       // Store the theme preference in localStorage
+            darkModeClass: 'light-mode', // Use your 'light-mode' class
+        });
+    } else {
+        console.error('themeSwitch is not defined');
+    };
 
-    // Handle light/dark mode toggle
-    document.getElementById('modeToggle').addEventListener('click', () => {
-        document.body.classList.toggle('light-mode');
-        const mode = document.body.classList.contains('light-mode') ? 'light' : 'dark';
-        localStorage.setItem('theme', mode);
-        document.getElementById('modeToggle').textContent = mode === 'light' ? 'Toggle Dark Mode' : 'Toggle Light Mode';
+    // Listen for paste event to capture input globally
+    document.addEventListener('paste', (event) => {
+        const pastedText = (event.clipboardData || window.clipboardData).getData('text');
+        handleActionInput(pastedText);
     });
 
-    // Load actions from the file system on startup
-    await loadActionsFromFile();
-
-    // Add action to the list
+    // Add action when clicking the "+" button
     document.getElementById('addAction').addEventListener('click', () => {
         const jsonInput = document.getElementById('jsonInput').value;
+        handleActionInput(jsonInput);
+    });
+
+    // Function to handle adding new actions
+    function handleActionInput(input) {
         try {
-            const actionData = JSON.parse(jsonInput);
+            const actionData = JSON.parse(input);
+
+            const isDuplicate = actions.some((action) => action.json === input);
+            if (isDuplicate) {
+                const duplicate = actions.find((action) => action.json === input);
+                const nameOrAlias = duplicate.alias || duplicate.name;
+                alert(`Duplicate action detected! Check existing action: ${nameOrAlias}`);
+                return;
+            }
+
             const actionName = actionData?.data?.name || 'Unnamed Action';
             const actionDescription = actionData?.data?.description || 'No Description Provided';
             const transitionMode = actionData?.data?.transitionMode || 'No Transition Mode';
@@ -35,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             actions.push({
                 name: actionName,
-                alias: '', 
+                alias: '',
                 description: actionDescription,
                 transitionMode: transitionMode,
                 transitions: transitions.map(t => ({
@@ -43,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     publish: t.publish.map(p => `${p.key}: ${p.value}`)
                 })),
                 pack: pack,
-                json: jsonInput 
+                json: input
             });
 
             saveActionsToFile();
@@ -51,7 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) {
             alert('Invalid JSON. Please check your input.');
         }
-    });
+    }
 
     // Search functionality
     const filterInput = document.getElementById('filterInput');
@@ -68,65 +82,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         renderActions(filteredActions); // Render only the filtered results
     });
-
-    // Toggle Edit Mode to enable/disable drag-and-drop
-    const editModeToggle = document.getElementById('editModeToggle');
-    editModeToggle.addEventListener('click', () => {
-        editMode = !editMode;
-        if (editMode) {
-            editModeToggle.textContent = 'Disable Edit Mode';
-            editModeToggle.classList.add('active');
-            $('#actionsList').sortable('enable'); // Enable dragging
-        } else {
-            editModeToggle.textContent = 'Enable Edit Mode';
-            editModeToggle.classList.remove('active');
-            $('#actionsList').sortable('disable'); // Disable dragging
-        }
-    });
-
-    // Initially, disable dragging
-    $('#actionsList').sortable({ disabled: true });
-
-    // Handle sorting
-    const sortSelect = document.getElementById('sortSelect');
-    const sortButton = document.getElementById('sortButton');
-
-    sortSelect.addEventListener('change', handleSortChange);
-    sortButton.addEventListener('click', () => {
-        isAscending = !isAscending;
-        handleSortChange();
-    });
-
-    function handleSortChange() {
-        sortBy = sortSelect.value;
-        if (sortBy === 'manual') {
-            // Enable drag-and-drop, disable sorting
-            editModeToggle.style.display = 'inline';
-            $('#actionsList').sortable('enable');
-        } else {
-            // Hide the Edit Mode button, disable drag-and-drop, and sort items
-            editModeToggle.style.display = 'none';
-            $('#actionsList').sortable('disable');
-            sortActions();
-        }
-    }
-
-    function sortActions() {
-        if (sortBy === 'manual') return; // Manual sorting is enabled, don't sort
-
-        actions.sort((a, b) => {
-            const fieldA = a[sortBy]?.toLowerCase() || '';
-            const fieldB = b[sortBy]?.toLowerCase() || '';
-
-            if (isAscending) {
-                return fieldA.localeCompare(fieldB);
-            } else {
-                return fieldB.localeCompare(fieldA);
-            }
-        });
-
-        renderActions();
-    }
 
     // Render actions and set up click-to-expand functionality with animation
     function renderActions(filteredActions = actions) {
